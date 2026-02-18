@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Flag Battle Royale - Ultra Edition Fixed</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <style>
+        :root {
+            --primary: #ff4757;
+            --gold: #ffcf33;
+            --glass: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            margin: 0; padding: 0;
+            background: radial-gradient(circle at center, #2f0a0a 0%, #0d0202 100%);
+            overflow: hidden;
+            font-family: 'Segoe UI', Roboto, sans-serif;
+            color: white;
+            user-select: none;
+        }
+
+        #game-container { width: 100vw; height: 100vh; display: block; }
+
+        .ui-layer {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 100;
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn {
+            background: var(--glass);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 12px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: 0.3s;
+            text-transform: uppercase;
+        }
+
+        .btn:hover {
+            background: var(--primary);
+            box-shadow: 0 0 20px rgba(255, 71, 87, 0.4);
+        }
+
+        #settings-panel {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            width: 280px;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 25px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: none;
+            z-index: 110;
+            backdrop-filter: blur(15px);
+        }
+
+        .control-group { margin-bottom: 20px; }
+        .control-group label { display: block; margin-bottom: 8px; font-size: 0.85rem; color: #aaa; }
+        .control-group input { width: 100%; cursor: pointer; accent-color: var(--primary); }
+        .value-display { float: right; color: var(--primary); font-weight: bold; }
+
+        #winner-modal {
+            display: none;
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.95);
+            padding: 50px;
+            border-radius: 40px;
+            text-align: center;
+            box-shadow: 0 0 100px rgba(255, 207, 51, 0.5);
+            z-index: 200;
+            color: #111;
+            width: 320px;
+        }
+
+        #winner-flag {
+            width: 200px;
+            border: 8px solid var(--gold);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 207, 51, 0.7); }
+            70% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(255, 207, 51, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 207, 51, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="ui-layer">
+        <button class="btn" onclick="toggleSettings()">⚙️ Physics</button>
+        <button class="btn" onclick="resetGame()">🔄 Restart</button>
+    </div>
+
+    <div id="settings-panel">
+        <div class="control-group">
+            <label>Rotation Speed <span id="val-speed" class="value-display">1.5</span></label>
+            <input type="range" min="0.5" max="5" step="0.1" value="1.5" oninput="updateSpeed(this.value)">
+        </div>
+        <div class="control-group">
+            <label>Shove Factor <span id="val-friction" class="value-display">0.02</span></label>
+            <input type="range" min="0" max="0.2" step="0.01" value="0.02" oninput="updatePhysics('friction', this.value)">
+        </div>
+        <div class="control-group">
+            <label>Bounciness <span id="val-restitution" class="value-display">0.4</span></label>
+            <input type="range" min="0" max="1" step="0.1" value="0.4" oninput="updatePhysics('restitution', this.value)">
+        </div>
+        <div class="control-group">
+            <label>Gap Size <span id="val-gap" class="value-display">8</span></label>
+            <input type="range" min="4" max="25" step="1" value="8" oninput="updateGap(this.value)">
+        </div>
+    </div>
+
+    <div id="game-container"></div>
+
+    <div id="winner-modal">
+        <h2 style="margin:0; color:#ff4757;">CHAMPION</h2>
+        <h1 id="winner-country" style="font-size: 1.8rem; margin: 15px 0;">Country</h1>
+        <img id="winner-flag" src="" alt="Winner">
+        <br>
+        <button class="btn" style="background:#111; color:white;" onclick="resetGame()">New Battle</button>
+    </div>
+
+    <script>
+        const countryData = {"af":"Afghanistan","al":"Albania","dz":"Algeria","ad":"Andorra","ao":"Angola","ar":"Argentina","am":"Armenia","au":"Australia","at":"Austria","az":"Azerbaijan","bs":"Bahamas","bh":"Bahrain","bd":"Bangladesh","bb":"Barbados","by":"Belarus","be":"Belgium","bz":"Belize","bj":"Benin","bt":"Bhutan","bo":"Bolivia","ba":"Bosnia","bw":"Botswana","br":"Brazil","bn":"Brunei","bg":"Bulgaria","bf":"Burkina Faso","bi":"Burundi","kh":"Cambodia","cm":"Cameroon","ca":"Canada","cf":"Central African Republic","td":"Chad","cl":"Chile","cn":"China","co":"Colombia","km":"Comoros","cg":"Congo","cr":"Costa Rica","hr":"Croatia","cu":"Cuba","cy":"Cyprus","cz":"Czechia","dk":"Denmark","dj":"Djibouti","dm":"Dominica","do":"Dominican Republic","ec":"Ecuador","eg":"Egypt","sv":"El Salvador","gq":"Equatorial Guinea","er":"Eritrea","ee":"Estonia","et":"Ethiopia","fj":"Fiji","fi":"Finland","fr":"France","ga":"Gabon","gm":"Gambia","ge":"Georgia","de":"Germany","gh":"Ghana","gr":"Greece","gd":"Grenada","gt":"Guatemala","gn":"Guinea","gw":"Guinea-Bissau","gy":"Guyana","ht":"Haiti","hn":"Honduras","hu":"Hungary","is":"Iceland","in":"India","id":"Indonesia","ir":"Iran","iq":"Iraq","ie":"Ireland","il":"Israel","it":"Italy","jm":"Jamaica","jp":"Japan","jo":"Jordan","kz":"Kazakhstan","ke":"Kenya","ki":"Kiribati","kp":"North Korea","kr":"South Korea","kw":"Kuwait","kg":"Kyrgyzstan","la":"Laos","lv":"Latvia","lb":"Lebanon","ls":"Lesotho","lr":"Liberia","ly":"Libya","li":"Liechtenstein","lt":"Lithuania","lu":"Luxembourg","mg":"Madagascar","mw":"Malawi","my":"Malaysia","mv":"Maldives","ml":"Mali","mt":"Malta","mh":"Marshall Islands","mr":"Mauritania","mu":"Mauritius","mx":"Mexico","fm":"Micronesia","md":"Moldova","mc":"Monaco","mn":"Mongolia","me":"Montenegro","ma":"Morocco","mz":"Mozambique","mm":"Myanmar","na":"Namibia","nr":"Nauru","np":"Nepal","nl":"Netherlands","nz":"New Zealand","ni":"Nicaragua","ne":"Niger","ng":"Nigeria","no":"Norway","om":"Oman","pk":"Pakistan","pw":"Palau","pa":"Panama","pg":"Papua New Guinea","py":"Paraguay","pe":"Peru","ph":"Philippines","pl":"Poland","pt":"Portugal","qa":"Qatar","ro":"Romania","ru":"Russia","rw":"Rwanda","kn":"Saint Kitts","lc":"Saint Lucia","vc":"Saint Vincent","ws":"Samoa","sm":"San Marino","st":"Sao Tome","sa":"Saudi Arabia","sn":"Senegal","rs":"Serbia","sc":"Seychelles","sl":"Sierra Leone","sg":"Singapore","sk":"Slovakia","si":"Slovenia","sb":"Solomon Islands","so":"Somalia","za":"South Africa","es":"Spain","lk":"Sri Lanka","sd":"Sudan","sr":"Suriname","sz":"Eswatini","se":"Sweden","ch":"Switzerland","sy":"Syria","tw":"Taiwan","tj":"Tajikistan","tz":"Tanzania","th":"Thailand","tg":"Togo","to":"Tonga","tt":"Trinidad","tn":"Tunisia","tr":"Turkey","tm":"Turkmenistan","tv":"Tuvalu","ug":"Uganda","ua":"Ukraine","ae":"UAE","gb":"United Kingdom","us":"United States","uy":"Uruguay","uz":"Uzbekistan","vu":"Vanuatu","ve":"Venezuela","vn":"Vietnam","ye":"Yemen","zm":"Zambia","zw":"Zimbabwe"};
+        const countries = Object.entries(countryData).map(([code, name]) => ({ code, name }));
+
+        const { Engine, Render, Runner, Composite, Bodies, Body, Events } = Matter;
+        let engine, render, runner;
+        let rotationSpeed = 0.015, gapSize = 8, currentFriction = 0.02, currentRestitution = 0.4;
+        let wheelParts = [], gapParts = [], activeFlags = [], gameOver = false, isSealed = false;
+        let centerX, centerY;
+
+        function setupMatter() {
+            // FIX 1: Ensure canvas is cleaned up before recreating to prevent black screen
+            if (render) {
+                Render.stop(render);
+                Runner.stop(runner);
+                render.canvas.remove();
+                render.textures = {};
+            }
+
+            centerX = window.innerWidth / 2;
+            centerY = window.innerHeight / 2;
+            
+            engine = Engine.create();
+            render = Render.create({
+                element: document.getElementById('game-container'),
+                engine: engine,
+                options: { 
+                    width: window.innerWidth, 
+                    height: window.innerHeight, 
+                    wireframes: false, 
+                    background: 'transparent' 
+                }
+            });
+
+            Render.run(render);
+            runner = Runner.create();
+            Runner.run(runner, engine);
+
+            // FIX 2: Attach the rotation event once here
+            Events.on(engine, 'beforeUpdate', () => {
+                if (gameOver) return;
+                wheelParts.forEach(p => Body.rotate(p, rotationSpeed, {x: centerX, y: centerY}));
+                gapParts.forEach(p => Body.rotate(p, rotationSpeed, {x: centerX, y: centerY}));
+
+                if (activeFlags.length === 1 && !isSealed) {
+                    isSealed = true;
+                    Composite.add(engine.world, gapParts);
+                    setTimeout(() => declareWinner(activeFlags[0]), 2000);
+                }
+
+                for (let i = activeFlags.length - 1; i >= 0; i--) {
+                    if (activeFlags[i].position.y > window.innerHeight + 100) {
+                        Composite.remove(engine.world, activeFlags[i]);
+                        activeFlags.splice(i, 1);
+                    }
+                }
+            });
+        }
+
+        function createWheel() {
+            wheelParts = []; gapParts = []; isSealed = false;
+            const segments = 80;
+            const radius = Math.min(window.innerWidth * 0.4, 280);
+
+            for (let i = 0; i < segments; i++) {
+                const angle = (i / segments) * Math.PI * 2 - (Math.PI / 2);
+                const part = Bodies.rectangle(
+                    centerX + Math.cos(angle) * radius,
+                    centerY + Math.sin(angle) * radius,
+                    radius * 0.16, 20, {
+                        isStatic: true, angle: angle + Math.PI / 2,
+                        render: { fillStyle: '#ff4757' }, friction: 0.1
+                    }
+                );
+                if (i < gapSize) gapParts.push(part);
+                else { wheelParts.push(part); Composite.add(engine.world, part); }
+            }
+        }
+
+        function spawnFlags() {
+            activeFlags = [];
+            countries.sort(() => 0.5 - Math.random()).forEach(c => {
+                const flag = Bodies.rectangle(centerX, centerY, 38, 24, {
+                    restitution: currentRestitution, 
+                    friction: currentFriction, 
+                    density: 0.01,
+                    plugin: { data: c },
+                    render: { sprite: { texture: `https://flagcdn.com/w80/${c.code}.png`, xScale: 0.45, yScale: 0.45 } }
+                });
+                activeFlags.push(flag);
+            });
+            Composite.add(engine.world, activeFlags);
+        }
+
+        function resetGame() {
+            if (!engine) return;
+            Composite.clear(engine.world);
+            gameOver = false;
+            isSealed = false;
+            document.getElementById('winner-modal').style.display = 'none';
+            // Re-center on every reset
+            centerX = window.innerWidth / 2;
+            centerY = window.innerHeight / 2;
+            createWheel();
+            spawnFlags();
+        }
+
+        function declareWinner(flag) {
+            if (gameOver || !flag) return;
+            gameOver = true;
+            const data = flag.plugin.data;
+            document.getElementById('winner-country').innerText = data.name;
+            document.getElementById('winner-flag').src = `https://flagcdn.com/w320/${data.code}.png`;
+            document.getElementById('winner-modal').style.display = 'block';
+        }
+
+        function toggleSettings() {
+            const s = document.getElementById('settings-panel');
+            s.style.display = s.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function updateSpeed(v) { 
+            rotationSpeed = parseFloat(v) * 0.01; 
+            document.getElementById('val-speed').innerText = v; 
+        }
+
+        function updatePhysics(p, v) { 
+            const val = parseFloat(v);
+            document.getElementById('val-'+p).innerText = val;
+            if(p === 'friction') currentFriction = val;
+            if(p === 'restitution') currentRestitution = val;
+            activeFlags.forEach(f => f[p] = val);
+        }
+
+        function updateGap(v) {
+            gapSize = parseInt(v);
+            document.getElementById('val-gap').innerText = v;
+            resetGame(); 
+        }
+
+        // FIX 3: Robust Resize handling
+        window.addEventListener('resize', () => {
+            setupMatter();
+            resetGame();
+        });
+
+        // Initialize sequence
+        setupMatter();
+        resetGame();
+    </script>
+</body>
+</html>
