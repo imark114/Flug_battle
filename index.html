@@ -14,14 +14,28 @@
 
         body {
             margin: 0; padding: 0;
-            background: radial-gradient(circle at center, #2f0a0a 0%, #0d0202 100%);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%);
             overflow: hidden;
             font-family: 'Segoe UI', Roboto, sans-serif;
             color: white;
             user-select: none;
+            transition: filter 0.3s ease;
         }
 
-        #game-container { width: 100vw; height: 100vh; display: block; }
+        body.blurred {
+            filter: blur(8px);
+        }
+
+        #game-container { 
+            width: 100vw; 
+            height: 100vh; 
+            display: block;
+            transition: filter 0.3s ease;
+        }
+
+        #game-container.blurred {
+            filter: blur(8px);
+        }
 
         .ui-layer {
             position: absolute;
@@ -33,56 +47,59 @@
         }
 
         .btn {
-            background: var(--glass);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: linear-gradient(135deg, rgba(255,71,87,0.9), rgba(255,107,107,0.9));
+            border: 2px solid rgba(255, 255, 255, 0.3);
             color: white;
-            padding: 12px 20px;
-            border-radius: 12px;
+            padding: 14px 24px;
+            border-radius: 16px;
             cursor: pointer;
             backdrop-filter: blur(10px);
-            font-size: 0.9rem;
-            font-weight: 600;
-            transition: 0.3s;
+            font-size: 0.95rem;
+            font-weight: 700;
+            transition: all 0.3s;
             text-transform: uppercase;
+            box-shadow: 0 4px 15px rgba(255, 71, 87, 0.3);
         }
 
         .btn:hover {
-            background: var(--primary);
-            box-shadow: 0 0 20px rgba(255, 71, 87, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(255, 71, 87, 0.5);
         }
 
         #settings-panel {
             position: absolute;
             top: 80px;
             left: 20px;
-            width: 280px;
-            background: rgba(0, 0, 0, 0.9);
-            padding: 25px;
-            border-radius: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 300px;
+            background: linear-gradient(135deg, rgba(0,0,0,0.95), rgba(30,30,60,0.95));
+            padding: 30px;
+            border-radius: 24px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
             display: none;
             z-index: 110;
-            backdrop-filter: blur(15px);
+            backdrop-filter: blur(20px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
         }
 
-        .control-group { margin-bottom: 20px; }
-        .control-group label { display: block; margin-bottom: 8px; font-size: 0.85rem; color: #aaa; }
-        .control-group input { width: 100%; cursor: pointer; accent-color: var(--primary); }
-        .value-display { float: right; color: var(--primary); font-weight: bold; }
+        .control-group { margin-bottom: 24px; }
+        .control-group label { display: block; margin-bottom: 10px; font-size: 0.9rem; color: #ddd; font-weight: 600; }
+        .control-group input { width: 100%; cursor: pointer; accent-color: var(--primary); height: 6px; }
+        .value-display { float: right; color: var(--gold); font-weight: bold; font-size: 1rem; }
 
         #winner-modal {
             display: none;
             position: fixed;
             top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            background: rgba(255, 255, 255, 0.95);
-            padding: 50px;
-            border-radius: 40px;
+            background: linear-gradient(135deg, rgba(255,255,255,0.98), rgba(255,250,240,0.98));
+            padding: 60px;
+            border-radius: 48px;
             text-align: center;
-            box-shadow: 0 0 100px rgba(255, 207, 51, 0.5);
+            box-shadow: 0 0 100px rgba(255, 207, 51, 0.6), 0 20px 60px rgba(0,0,0,0.3);
             z-index: 200;
             color: #111;
-            width: 320px;
+            width: 360px;
+            border: 3px solid var(--gold);
         }
 
         #winner-flag {
@@ -97,6 +114,26 @@
             0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 207, 51, 0.7); }
             70% { transform: scale(1.05); box-shadow: 0 0 0 20px rgba(255, 207, 51, 0); }
             100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 207, 51, 0); }
+        }
+
+        #countdown {
+            position: fixed;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 140px;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 0 60px rgba(255, 207, 51, 1), 0 0 100px rgba(255, 107, 107, 0.8);
+            z-index: 300;
+            display: none;
+            animation: countPulse 0.8s ease-out;
+            letter-spacing: 10px;
+        }
+
+        @keyframes countPulse {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
         }
     </style>
 </head>
@@ -117,8 +154,8 @@
             <input type="range" min="0" max="0.2" step="0.01" value="0.02" oninput="updatePhysics('friction', this.value)">
         </div>
         <div class="control-group">
-            <label>Bounciness <span id="val-restitution" class="value-display">0.4</span></label>
-            <input type="range" min="0" max="1" step="0.1" value="0.4" oninput="updatePhysics('restitution', this.value)">
+            <label>Bounciness <span id="val-restitution" class="value-display">0.8</span></label>
+            <input type="range" min="0" max="1" step="0.1" value="0.8" oninput="updatePhysics('restitution', this.value)">
         </div>
         <div class="control-group">
             <label>Gap Size <span id="val-gap" class="value-display">8</span></label>
@@ -136,14 +173,16 @@
         <button class="btn" style="background:#111; color:white;" onclick="resetGame()">New Battle</button>
     </div>
 
+    <div id="countdown"></div>
+
     <script>
         const countryData = {"af":"Afghanistan","al":"Albania","dz":"Algeria","ad":"Andorra","ao":"Angola","ar":"Argentina","am":"Armenia","au":"Australia","at":"Austria","az":"Azerbaijan","bs":"Bahamas","bh":"Bahrain","bd":"Bangladesh","bb":"Barbados","by":"Belarus","be":"Belgium","bz":"Belize","bj":"Benin","bt":"Bhutan","bo":"Bolivia","ba":"Bosnia","bw":"Botswana","br":"Brazil","bn":"Brunei","bg":"Bulgaria","bf":"Burkina Faso","bi":"Burundi","kh":"Cambodia","cm":"Cameroon","ca":"Canada","cf":"Central African Republic","td":"Chad","cl":"Chile","cn":"China","co":"Colombia","km":"Comoros","cg":"Congo","cr":"Costa Rica","hr":"Croatia","cu":"Cuba","cy":"Cyprus","cz":"Czechia","dk":"Denmark","dj":"Djibouti","dm":"Dominica","do":"Dominican Republic","ec":"Ecuador","eg":"Egypt","sv":"El Salvador","gq":"Equatorial Guinea","er":"Eritrea","ee":"Estonia","et":"Ethiopia","fj":"Fiji","fi":"Finland","fr":"France","ga":"Gabon","gm":"Gambia","ge":"Georgia","de":"Germany","gh":"Ghana","gr":"Greece","gd":"Grenada","gt":"Guatemala","gn":"Guinea","gw":"Guinea-Bissau","gy":"Guyana","ht":"Haiti","hn":"Honduras","hu":"Hungary","is":"Iceland","in":"India","id":"Indonesia","ir":"Iran","iq":"Iraq","ie":"Ireland","il":"Israel","it":"Italy","jm":"Jamaica","jp":"Japan","jo":"Jordan","kz":"Kazakhstan","ke":"Kenya","ki":"Kiribati","kp":"North Korea","kr":"South Korea","kw":"Kuwait","kg":"Kyrgyzstan","la":"Laos","lv":"Latvia","lb":"Lebanon","ls":"Lesotho","lr":"Liberia","ly":"Libya","li":"Liechtenstein","lt":"Lithuania","lu":"Luxembourg","mg":"Madagascar","mw":"Malawi","my":"Malaysia","mv":"Maldives","ml":"Mali","mt":"Malta","mh":"Marshall Islands","mr":"Mauritania","mu":"Mauritius","mx":"Mexico","fm":"Micronesia","md":"Moldova","mc":"Monaco","mn":"Mongolia","me":"Montenegro","ma":"Morocco","mz":"Mozambique","mm":"Myanmar","na":"Namibia","nr":"Nauru","np":"Nepal","nl":"Netherlands","nz":"New Zealand","ni":"Nicaragua","ne":"Niger","ng":"Nigeria","no":"Norway","om":"Oman","pk":"Pakistan","pw":"Palau","pa":"Panama","pg":"Papua New Guinea","py":"Paraguay","pe":"Peru","ph":"Philippines","pl":"Poland","pt":"Portugal","qa":"Qatar","ro":"Romania","ru":"Russia","rw":"Rwanda","kn":"Saint Kitts","lc":"Saint Lucia","vc":"Saint Vincent","ws":"Samoa","sm":"San Marino","st":"Sao Tome","sa":"Saudi Arabia","sn":"Senegal","rs":"Serbia","sc":"Seychelles","sl":"Sierra Leone","sg":"Singapore","sk":"Slovakia","si":"Slovenia","sb":"Solomon Islands","so":"Somalia","za":"South Africa","es":"Spain","lk":"Sri Lanka","sd":"Sudan","sr":"Suriname","sz":"Eswatini","se":"Sweden","ch":"Switzerland","sy":"Syria","tw":"Taiwan","tj":"Tajikistan","tz":"Tanzania","th":"Thailand","tg":"Togo","to":"Tonga","tt":"Trinidad","tn":"Tunisia","tr":"Turkey","tm":"Turkmenistan","tv":"Tuvalu","ug":"Uganda","ua":"Ukraine","ae":"UAE","gb":"United Kingdom","us":"United States","uy":"Uruguay","uz":"Uzbekistan","vu":"Vanuatu","ve":"Venezuela","vn":"Vietnam","ye":"Yemen","zm":"Zambia","zw":"Zimbabwe"};
         const countries = Object.entries(countryData).map(([code, name]) => ({ code, name }));
 
         const { Engine, Render, Runner, Composite, Bodies, Body, Events } = Matter;
         let engine, render, runner;
-        let rotationSpeed = 0.015, gapSize = 8, currentFriction = 0.02, currentRestitution = 0.4;
-        let wheelParts = [], gapParts = [], activeFlags = [], gameOver = false, isSealed = false;
+        let rotationSpeed = 0.015, gapSize = 8, currentFriction = 0.02, currentRestitution = 0.8;
+        let wheelParts = [], gapParts = [], activeFlags = [], gameOver = false, isSealed = false, battleStarted = false;
         let centerX, centerY;
 
         function setupMatter() {
@@ -174,11 +213,27 @@
             runner = Runner.create();
             Runner.run(runner, engine);
 
-            // FIX 2: Attach the rotation event once here
             Events.on(engine, 'beforeUpdate', () => {
-                if (gameOver) return;
+                if (gameOver || !battleStarted) return;
                 wheelParts.forEach(p => Body.rotate(p, rotationSpeed, {x: centerX, y: centerY}));
                 gapParts.forEach(p => Body.rotate(p, rotationSpeed, {x: centerX, y: centerY}));
+
+                // Enhanced bouncing: push flags toward circle edges
+                activeFlags.forEach(flag => {
+                    const dx = flag.position.x - centerX;
+                    const dy = flag.position.y - centerY;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const speed = Math.sqrt(flag.velocity.x ** 2 + flag.velocity.y ** 2);
+                    
+                    // Keep flags energetic and bouncing
+                    if (speed < 3) {
+                        const angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.5;
+                        Body.applyForce(flag, flag.position, {
+                            x: Math.cos(angle) * 0.0005,
+                            y: Math.sin(angle) * 0.0005
+                        });
+                    }
+                });
 
                 if (activeFlags.length === 1 && !isSealed) {
                     isSealed = true;
@@ -207,7 +262,9 @@
                     centerY + Math.sin(angle) * radius,
                     radius * 0.16, 20, {
                         isStatic: true, angle: angle + Math.PI / 2,
-                        render: { fillStyle: '#ff4757' }, friction: 0.1
+                        render: { fillStyle: '#ff6b6b' }, 
+                        friction: 0.05,
+                        restitution: 0.95
                     }
                 );
                 if (i < gapSize) gapParts.push(part);
@@ -217,13 +274,26 @@
 
         function spawnFlags() {
             activeFlags = [];
+            const radius = Math.min(window.innerWidth * 0.4, 280) - 60;
             countries.sort(() => 0.5 - Math.random()).forEach(c => {
-                const flag = Bodies.rectangle(centerX, centerY, 38, 24, {
-                    restitution: currentRestitution, 
-                    friction: currentFriction, 
-                    density: 0.01,
+                const angle = Math.random() * Math.PI * 2;
+                const dist = Math.random() * radius * 0.5;
+                const flag = Bodies.rectangle(
+                    centerX + Math.cos(angle) * dist, 
+                    centerY + Math.sin(angle) * dist, 
+                    38, 24, {
+                    restitution: 0.95, 
+                    friction: 0.01, 
+                    density: 0.0008,
+                    frictionAir: 0.002,
                     plugin: { data: c },
                     render: { sprite: { texture: `https://flagcdn.com/w80/${c.code}.png`, xScale: 0.45, yScale: 0.45 } }
+                });
+                // Strong initial velocity toward edges
+                const forceAngle = Math.atan2(flag.position.y - centerY, flag.position.x - centerX);
+                Body.setVelocity(flag, {
+                    x: Math.cos(forceAngle) * (3 + Math.random() * 2),
+                    y: Math.sin(forceAngle) * (3 + Math.random() * 2)
                 });
                 activeFlags.push(flag);
             });
@@ -235,12 +305,44 @@
             Composite.clear(engine.world);
             gameOver = false;
             isSealed = false;
+            battleStarted = false;
             document.getElementById('winner-modal').style.display = 'none';
-            // Re-center on every reset
             centerX = window.innerWidth / 2;
             centerY = window.innerHeight / 2;
             createWheel();
             spawnFlags();
+            startCountdown();
+        }
+
+        function startCountdown() {
+            const countdownEl = document.getElementById('countdown');
+            const gameContainer = document.getElementById('game-container');
+            let count = 5;
+            
+            // Add blur effect
+            gameContainer.classList.add('blurred');
+            
+            countdownEl.style.display = 'block';
+            countdownEl.innerText = count;
+            
+            const interval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownEl.innerText = count;
+                    countdownEl.style.animation = 'none';
+                    setTimeout(() => countdownEl.style.animation = 'countPulse 0.8s ease-out', 10);
+                } else {
+                    countdownEl.innerText = 'START!';
+                    countdownEl.style.animation = 'none';
+                    setTimeout(() => countdownEl.style.animation = 'countPulse 0.8s ease-out', 10);
+                    setTimeout(() => {
+                        countdownEl.style.display = 'none';
+                        gameContainer.classList.remove('blurred');
+                        battleStarted = true;
+                    }, 800);
+                    clearInterval(interval);
+                }
+            }, 1000);
         }
 
         function declareWinner(flag) {
@@ -267,7 +369,7 @@
             document.getElementById('val-'+p).innerText = val;
             if(p === 'friction') currentFriction = val;
             if(p === 'restitution') currentRestitution = val;
-            activeFlags.forEach(f => f[p] = val);
+            if(activeFlags.length) activeFlags.forEach(f => f[p] = val);
         }
 
         function updateGap(v) {
