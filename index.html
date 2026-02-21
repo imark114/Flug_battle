@@ -292,6 +292,25 @@
                         // Flag is outside the circle, apply normal downward gravity manually
                         Body.applyForce(flag, flag.position, { x: 0, y: 0.002 });
                     } else {
+                        // Calculate where the center of the "gap" is based on the first missing gap part
+                        // gapParts[Math.floor(gapSize/2)] gives roughly the middle of the gap hole
+                        const gapCenterPart = gapParts[Math.floor(gapSize / 2)];
+
+                        if (gapCenterPart && !isSealed) {
+                            const gapDx = gapCenterPart.position.x - flag.position.x;
+                            const gapDy = gapCenterPart.position.y - flag.position.y;
+                            const distToGap = Math.sqrt(gapDx * gapDx + gapDy * gapDy);
+
+                            // If a flag gets very close to the gap (e.g., within 100 pixels), suck it out
+                            if (distToGap < 100) {
+                                Body.applyForce(flag, flag.position, {
+                                    x: (gapDx / distToGap) * 0.002,
+                                    y: (gapDy / distToGap) * 0.002
+                                });
+                                return; // Skip the random float if it's being sucked into the gap
+                            }
+                        }
+
                         // Keep flags energetic and floating inside the circle
                         if (speed < 4) {
                             const randomAngle = Math.random() * Math.PI * 2;
