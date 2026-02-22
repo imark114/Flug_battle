@@ -220,11 +220,11 @@
     <div id="game-container"></div>
 
     <div id="winner-modal">
-        <h2 style="margin:0; color:#ff4757;">CHAMPION</h2>
+        <h2 id="winner-title" style="margin:0; color:#ff4757;">CHAMPION</h2>
         <h1 id="winner-country" style="font-size: 1.8rem; margin: 15px 0;">Country</h1>
-        <img id="winner-flag" src="" alt="Winner">
+        <img id="winner-flag" src="" alt="Winner" style="display: none;">
         <br>
-        <button class="btn" style="background:#111; color:white;" onclick="resetGame()">New Battle</button>
+        <p style="color:#666; font-size:0.9rem;">Auto-restarting...</p>
     </div>
 
     <div id="countdown"></div>
@@ -322,10 +322,10 @@
                     }
                 });
 
-                if (activeFlags.length === 1 && !isSealed) {
+                if (activeFlags.length <= 1 && !isSealed) {
                     isSealed = true;
                     Composite.add(engine.world, gapParts);
-                    setTimeout(() => declareWinner(activeFlags[0]), 2000);
+                    setTimeout(() => declareWinner(activeFlags[0] || null), 2000);
                 }
 
                 for (let i = activeFlags.length - 1; i >= 0; i--) {
@@ -433,17 +433,40 @@
         }
 
         function declareWinner(flag) {
-            if (gameOver || !flag) return;
+            if (gameOver) return;
             gameOver = true;
 
-            // Play winning sound effect
-            winSound.currentTime = 0;
-            winSound.play().catch(err => console.log('Audio play blocked:', err));
+            const modal = document.getElementById('winner-modal');
+            const titleEl = document.getElementById('winner-title');
+            const countryEl = document.getElementById('winner-country');
+            const flagEl = document.getElementById('winner-flag');
 
-            const data = flag.plugin.data;
-            document.getElementById('winner-country').innerText = data.name;
-            document.getElementById('winner-flag').src = `https://flagcdn.com/w320/${data.code}.png`;
-            document.getElementById('winner-modal').style.display = 'block';
+            if (!flag) {
+                // TIE BATTLE Scenario (0 flags left)
+                titleEl.innerText = "TIE BATTLE";
+                titleEl.style.color = "#a0a0a0";
+                countryEl.innerText = "No one survived!";
+                flagEl.style.display = 'none';
+                flagEl.src = "";
+            } else {
+                // Play winning sound effect only for a real champion
+                winSound.currentTime = 0;
+                winSound.play().catch(err => console.log('Audio play blocked:', err));
+
+                const data = flag.plugin.data;
+                titleEl.innerText = "CHAMPION";
+                titleEl.style.color = "#ff4757";
+                countryEl.innerText = data.name;
+                flagEl.src = `https://flagcdn.com/w320/${data.code}.png`;
+                flagEl.style.display = 'inline-block';
+            }
+
+            modal.style.display = 'block';
+
+            // Automatically restart the game after 4 seconds
+            setTimeout(() => {
+                resetGame();
+            }, 4000);
         }
 
         function toggleSettings() {
